@@ -12,8 +12,7 @@ type AnalysisResult = {
     surprise: number
   },
   keywords: string[],
-  entities: string[],
-  language: string
+  language: string // Elimina 'entities' de aquí
 }
 
 export default function TextAnalysisView() {
@@ -22,36 +21,46 @@ export default function TextAnalysisView() {
   const [result, setResult] = useState<AnalysisResult | null>(null)
 
   const handleAnalyze = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsAnalyzing(true)
-    setResult(null)
-
+    e.preventDefault();
+    setIsAnalyzing(true);
+    setResult(null);
+  
     try {
-      // Simulate API call to backend
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Simulated result
-      setResult({
-        overallSentiment: 'Positive',
-        sentimentScore: 0.8,
-        emotions: {
-          joy: 0.6,
-          sadness: 0.1,
-          anger: 0.05,
-          fear: 0.05,
-          surprise: 0.2
+      // Llamada al backend
+      const response = await fetch('http://localhost:5000/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        keywords: ['great', 'awesome', 'fantastic'],
-        entities: ['Product A', 'Company B'],
-        language: 'English'
-      })
+        body: JSON.stringify({ text }) // Enviar el texto ingresado
+      });
+  
+      if (!response.ok) {
+        throw new Error('Error en el análisis');
+      }
+  
+      const data = await response.json();
+      console.log("Received data from backend:", data); // Log para verificar el resultado
+      setResult({
+        overallSentiment: data.sentiment,
+        sentimentScore: data.polarity,
+        emotions: {
+          joy: data.subjectivity > 0.5 ? data.subjectivity : 0, // Ajusta según el resultado real
+          sadness: data.subjectivity < -0.5 ? -data.subjectivity : 0,
+          anger: 0,
+          fear: 0,
+          surprise: 0
+        },
+        keywords: data.topics,
+        language: data.language // Elimina 'entities' de aquí
+      });
     } catch (error) {
-      console.error('Error analyzing text:', error)
-      // Handle error state here
+      console.error('Error analyzing text:', error);
     } finally {
-      setIsAnalyzing(false)
+      setIsAnalyzing(false);
     }
-  }, [text])
+  }, [text]);
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
@@ -118,13 +127,25 @@ export default function TextAnalysisView() {
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-semibold">Overall Sentiment:</span>
                   <span className="flex items-center">
-                    {result.overallSentiment === 'Positive' ? (
+                    {result.overallSentiment === 'Very positive' ? (
+                      <svg className="h-5 w-5 text-green-700 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"></path>
+                      </svg>
+                    ) : result.overallSentiment === 'Positive' ? (
                       <svg className="h-5 w-5 text-green-500 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                         <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"></path>
                       </svg>
-                    ) : (
+                    ) : result.overallSentiment === 'Very negative' ? (
+                      <svg className="h-5 w-5 text-red-700 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"></path>
+                      </svg>
+                    ) : result.overallSentiment === 'Negative' ? (
                       <svg className="h-5 w-5 text-red-500 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                         <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"></path>
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5 text-yellow-500 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M12 8c.828 0 1.5.672 1.5 1.5S12.828 11 12 11s-1.5-.672-1.5-1.5S11.172 8 12 8zm0 2c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm-3 4h6v6H9v-6z"></path>
                       </svg>
                     )}
                     {result.overallSentiment}
@@ -145,19 +166,11 @@ export default function TextAnalysisView() {
                   <span className="font-semibold">Keywords:</span> {result.keywords.join(', ')}
                 </div>
                 <div>
-                  <span className="font-semibold">Entities:</span> {result.entities.join(', ')}
-                </div>
-                <div>
-                  <span className="font-semibold">Language:</span> {result.language}
+                  <span className="font-semibold">Detected Language:</span> {result.language}
                 </div>
               </div>
             ) : (
-              <div className="flex justify-center items-center h-64 text-gray-500">
-                <svg className="h-8 w-8 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                  <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                </svg>
-                <span>Enter text and click "Analyze Sentiment" to see results</span>
-              </div>
+              <div className="text-gray-500">No analysis performed yet.</div>
             )}
           </div>
         </div>

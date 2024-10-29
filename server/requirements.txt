@@ -12,3 +12,4 @@ regex==2024.9.11
 textblob==0.18.0.post0
 tqdm==4.66.5
 Werkzeug==3.0.6
+langdetect==1.0.9

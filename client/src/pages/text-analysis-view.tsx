@@ -37,8 +37,8 @@ export default function TextAnalysisView() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ text })
-      });
-
+    });
+  
       if (!response.ok) {
         throw new Error('Error en el análisis');
       }

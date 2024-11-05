@@ -1,5 +1,8 @@
-import React, { useState, useCallback } from 'react'
-import { Link } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
+import { useAuth } from '../contexts/AuthContext'; // Importar useAuth
 
 type AnalysisResult = {
   overallSentiment: string,
@@ -12,47 +15,48 @@ type AnalysisResult = {
     surprise: number
   },
   keywords: string[],
-  language: string // Elimina 'entities' de aquí
+  language: string
 }
 
 export default function TextAnalysisView() {
-  const [text, setText] = useState('')
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [result, setResult] = useState<AnalysisResult | null>(null)
+  const [text, setText] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const navigate = useNavigate();
+  const { currentUser } = useAuth(); // Obtener el usuario actual
 
   const handleAnalyze = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAnalyzing(true);
     setResult(null);
-  
+
     try {
-      // Llamada al backend
       const response = await fetch('http://localhost:5000/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ text }) // Enviar el texto ingresado
+        body: JSON.stringify({ text })
       });
-  
+
       if (!response.ok) {
         throw new Error('Error en el análisis');
       }
-  
+
       const data = await response.json();
-      console.log("Received data from backend:", data); // Log para verificar el resultado
+      console.log("Received data from backend:", data);
       setResult({
         overallSentiment: data.sentiment,
         sentimentScore: data.polarity,
         emotions: {
-          joy: data.subjectivity > 0.5 ? data.subjectivity : 0, // Ajusta según el resultado real
+          joy: data.subjectivity > 0.5 ? data.subjectivity : 0,
           sadness: data.subjectivity < -0.5 ? -data.subjectivity : 0,
           anger: 0,
           fear: 0,
           surprise: 0
         },
         keywords: data.topics,
-        language: data.language // Elimina 'entities' de aquí
+        language: data.language
       });
     } catch (error) {
       console.error('Error analyzing text:', error);
@@ -60,7 +64,15 @@ export default function TextAnalysisView() {
       setIsAnalyzing(false);
     }
   }, [text]);
-  
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/login'); // Redirigir al inicio de sesión después de cerrar sesión
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
@@ -84,6 +96,12 @@ export default function TextAnalysisView() {
               <div className="relative">
                 <button className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                   User Menu
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="ml-4 px-3 py-2 bg-red-500 text-white rounded-md"
+                >
+                  Cerrar Sesión
                 </button>
               </div>
             </div>
@@ -176,5 +194,5 @@ export default function TextAnalysisView() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { Scatter } from 'react-chartjs-2';
 import '../styles/SentimentAnalyzer.css';
-
 
 export default function SentimentAnalyzer() {
     const [text, setText] = useState('');
@@ -12,25 +12,23 @@ export default function SentimentAnalyzer() {
         setLoading(true);
         setError('');
         try {
-        const response = await fetch("http://127.0.0.1:5000/api/analyze", {
-            method: "POST",
-            headers: {
-            "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ text })
-        });
+            const response = await fetch("http://127.0.0.1:5000/api/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text })
+            });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-        const data = await response.json();
-        setResult(data);
+            const data = await response.json();
+            setResult(data);
         } catch (e) {
-        console.error("Error al analizar el sentimiento:", e);
-        setError('Hubo un error al analizar el sentimiento. Por favor, intenta de nuevo.');
+            console.error("Error al analizar el sentimiento:", e);
+            setError('Hubo un error al analizar el sentimiento. Por favor, intenta de nuevo.');
         } finally {
-        setLoading(false);
+            setLoading(false);
         }
     };
 
@@ -52,7 +50,7 @@ export default function SentimentAnalyzer() {
                 >
                     {loading ? 'Analizando...' : 'Analizar'}
                 </button>
-                
+
                 {error && (
                     <div className="error">
                         <strong>Error:</strong> {error}
@@ -65,6 +63,7 @@ export default function SentimentAnalyzer() {
                         <p><strong>Polaridad:</strong> {result.polarity?.toFixed(2) ?? 'No disponible'}</p>
                         <p><strong>Subjetividad:</strong> {result.subjectivity?.toFixed(2) ?? 'No disponible'}</p>
                         <p><strong>Idioma detectado:</strong> {result.language || 'No detectado'}</p>
+                        
                         <div>
                             <strong>Temas:</strong>
                             {result.topics && result.topics.length > 0 ? (
@@ -76,6 +75,32 @@ export default function SentimentAnalyzer() {
                             ) : (
                                 <span>No se detectaron temas específicos</span>
                             )}
+                        </div>
+
+                        <div>
+                            <h2>Nube de Palabras</h2>
+                            {result.wordcloud && (
+                                <img src={`data:image/png;base64,${result.wordcloud}`} alt="Nube de palabras" />
+                            )}
+                        </div>
+
+                        <div>
+                            <h2>Gráfico de Sentimientos</h2>
+                            <Scatter
+                                data={{
+                                    datasets: [{
+                                        label: 'Polaridad vs Subjetividad',
+                                        data: [{ x: result.polarity, y: result.subjectivity }],
+                                        backgroundColor: 'rgba(75,192,192,1)',
+                                    }],
+                                }}
+                                options={{
+                                    scales: {
+                                        x: { type: 'linear', position: 'bottom', title: { display: true, text: 'Polaridad' } },
+                                        y: { title: { display: true, text: 'Subjetividad' } }
+                                    }
+                                }}
+                            />
                         </div>
                     </div>
                 )}

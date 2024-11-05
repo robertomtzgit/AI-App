@@ -1,177 +1,185 @@
-import React, { useState, useCallback } from 'react'
-import { Link } from 'react-router-dom';
+import React, { useState, useCallback, useRef } from 'react'
+import { Upload, Cloud, BarChart2, PieChart, FileText } from 'lucide-react'
 
 type AnalysisResult = {
-  overallSentiment: string,
-  sentimentScore: number,
-  emotions: {
-    joy: number,
-    sadness: number,
-    anger: number,
-    fear: number,
-    surprise: number
+  sentimentSummary: {
+    total: number,
+    positive: number,
+    negative: number,
+    positive_percentage: number,
+    negative_percentage: number,
   },
-  keywords: string[],
-  language: string // Elimina 'entities' de aquí
+  wordCloudUrl: string,
+  sentimentChartUrl: string,
+  sentimentCountsUrl: string
 }
 
-export default function TextAnalysisView() {
-  const [text, setText] = useState('')
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
+export default function TextAnalysisView(): JSX.Element {
+  const [text, setText] = useState<string>('')
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleAnalyze = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsAnalyzing(true);
-    setResult(null);
-  
-    try {
-      // Llamada al backend
-      const response = await fetch('https://ai-app-vg2y.onrender.com/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text })
-    });
-  
-      if (!response.ok) {
-        throw new Error('Error en el análisis');
-      }
-  
-      const data = await response.json();
-      console.log("Received data from backend:", data); // Log para verificar el resultado
-      setResult({
-        overallSentiment: data.sentiment,
-        sentimentScore: data.polarity,
-        emotions: {
-          joy: data.subjectivity > 0.5 ? data.subjectivity : 0, // Ajusta según el resultado real
-          sadness: data.subjectivity < -0.5 ? -data.subjectivity : 0,
-          anger: 0,
-          fear: 0,
-          surprise: 0
-        },
-        keywords: data.topics,
-        language: data.language // Elimina 'entities' de aquí
-      });
-    } catch (error) {
-      console.error('Error analyzing text:', error);
-    } finally {
-      setIsAnalyzing(false);
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const formData = new FormData()
+      formData.append('file', file)
+      handleAnalyze(formData)
     }
-  }, [text]);
-  
+  }
+
+  const handleAnalyze = useCallback(async (data: FormData | { text: string }) => {
+    setIsAnalyzing(true)
+    setResult(null)
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/analyze', {
+        method: 'POST',
+        body: data instanceof FormData ? data : JSON.stringify(data),
+        headers: data instanceof FormData ? {} : {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Error en el análisis')
+      }
+
+      const result = await response.json()
+      setResult(result)
+    } catch (error) {
+      console.error('Error analyzing text:', error)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }, [])
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (text.trim()) {
+      handleAnalyze({ text })
+    }
+  }
+
+  const handleReset = () => {
+    setText('')
+    setResult(null)
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <Link to="/" className="text-2xl font-bold text-blue-600">SentimentAI</Link>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <Link to="/dashboard" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Dashboard
-                </Link>
-                <Link to="/history" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Analysis History
-                </Link>
-              </div>
-            </div>
-            <div className="hidden sm:ml-6 sm:flex sm:items-center">
-              <div className="relative">
-                <button className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  User Menu
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-teal-600 flex flex-col p-4">
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-center mb-8">Sentiment Analysis</h1>
+        <h1 className="text-4xl font-bold text-center mb-8 text-white">Sentiment Analysis</h1>
+        <p className="text-center text-white mb-6">
+          Enter your text or upload a .txt file to analyze sentiments. The results will include a sentiment summary, word cloud, and distribution charts.
+        </p>
         <div className="grid md:grid-cols-2 gap-8">
-          <div className="bg-white shadow-md rounded-lg p-6">
+          <div className="bg-white shadow-md rounded-lg p-6 h-[28rem]">
             <h2 className="text-xl font-semibold mb-4">Analyze Your Text</h2>
-            <form onSubmit={handleAnalyze} className="space-y-4">
-              <textarea 
-                placeholder="Enter your text here for sentiment analysis..." 
-                className="w-full h-40 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <textarea
+                placeholder="Enter your text here for sentiment analysis..."
+                className="w-full h-64 p-2 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
-              <button 
-                type="submit" 
-                className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isAnalyzing || !text.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={isAnalyzing || !text.trim()}
-              >
-                {isAnalyzing ? 'Analyzing...' : 'Analyze Sentiment'}
-              </button>
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center border border-gray-300 rounded-md p-2 hover:bg-gray-100 focus:outline-none"
+                >
+                  <Upload className="mr-2 h-4 w-4" /> Upload .txt File
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".txt"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button 
+                  type="submit" 
+                  className={`py-2 px-4 rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 ${isAnalyzing || !text.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={isAnalyzing || !text.trim()}
+                >
+                  {isAnalyzing ? 'Analyzing...' : 'Analyze Sentiment'}
+                </button>
+              </div>
             </form>
           </div>
-
-          <div className="bg-white shadow-md rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Analysis Results</h2>
-            {isAnalyzing ? (
-              <div className="flex justify-center items-center h-64">
-                <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </div>
-            ) : result ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold">Overall Sentiment:</span>
-                  <span className="flex items-center">
-                    {result.overallSentiment === 'Very positive' ? (
-                      <svg className="h-5 w-5 text-green-700 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                        <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"></path>
-                      </svg>
-                    ) : result.overallSentiment === 'Positive' ? (
-                      <svg className="h-5 w-5 text-green-500 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                        <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"></path>
-                      </svg>
-                    ) : result.overallSentiment === 'Very negative' ? (
-                      <svg className="h-5 w-5 text-red-700 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                        <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"></path>
-                      </svg>
-                    ) : result.overallSentiment === 'Negative' ? (
-                      <svg className="h-5 w-5 text-red-500 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                        <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"></path>
-                      </svg>
-                    ) : (
-                      <svg className="h-5 w-5 text-yellow-500 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                        <path d="M12 8c.828 0 1.5.672 1.5 1.5S12.828 11 12 11s-1.5-.672-1.5-1.5S11.172 8 12 8zm0 2c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm-3 4h6v6H9v-6z"></path>
-                      </svg>
-                    )}
-                    {result.overallSentiment}
-                  </span>
+          <div className="bg-white shadow-md rounded-lg p-6 h-[28rem]">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <FileText className="mr-2" /> Analysis Results
+            </h2>
+            <div className="h-[22rem] overflow-y-auto">
+              {isAnalyzing ? (
+                <div className="flex justify-center items-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                 </div>
-                <div>
-                  <span className="font-semibold">Sentiment Score:</span> {result.sentimentScore.toFixed(2)}
+              ) : result ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Sentiment Summary:</h3>
+                    <p>Total text: {result.sentimentSummary.total}</p>
+                    <p>Positive: {result.sentimentSummary.positive} ({result.sentimentSummary.positive_percentage}%)</p>
+                    <p>Negative: {result.sentimentSummary.negative} ({result.sentimentSummary.negative_percentage}%)</p>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-semibold">Emotions:</span>
-                  <ul className="list-disc list-inside pl-4">
-                    {Object.entries(result.emotions).map(([emotion, score]) => (
-                      <li key={emotion}>{emotion}: {(score as number).toFixed(2)}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <span className="font-semibold">Keywords:</span> {result.keywords.join(', ')}
-                </div>
-                <div>
-                  <span className="font-semibold">Detected Language:</span> {result.language}
-                </div>
-              </div>
-            ) : (
-              <div className="text-gray-500">No analysis performed yet.</div>
-            )}
+              ) : (
+                <div className="text-gray-500">No analysis performed yet.</div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-8 mt-8">
+          <div className="bg-white shadow-md rounded-lg p-6 h-[28rem]">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <Cloud className="mr-2" /> Word Cloud
+            </h2>
+            <div className="h-[22rem] flex items-center justify-center">
+              {result ? (
+                <img src={result.wordCloudUrl} alt="Word Cloud" className="max-w-full max-h-full object-contain" />
+              ) : (
+                <p className="text-gray-500">Word cloud will appear here after analysis</p>
+              )}
+            </div>
+          </div>
+          <div className="bg-white shadow-md rounded-lg p-6 h-[28rem]">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <BarChart2 className="mr-2" /> Sentiment Chart
+            </h2>
+            <div className="h-[22rem] flex items-center justify-center">
+              {result ? (
+                <img src={result.sentimentChartUrl} alt="Sentiment Chart" className="max-w-full max-h-full object-contain" />
+              ) : (
+                <p className="text-gray-500">Sentiment chart will appear here after analysis</p>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-8 mt-8">
+          <div className="bg-white shadow-md rounded-lg p-6 h-[28rem]">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <PieChart className="mr-2" /> Sentiment Distribution
+            </h2>
+            <div className="h-[22rem] flex items-center justify-center">
+              {result ? (
+                <img src={result.sentimentCountsUrl} alt="Sentiment Distribution" className="max-w-full max-h-full object-contain" />
+              ) : (
+                <p className="text-gray-500">Sentiment distribution will appear here after analysis</p>
+              )}
+            </div>
+          </div>
+          <div className="bg-white shadow-md rounded-lg p-6 mt-8 flex flex-col justify-center items-center h-[20rem]">
+            <h2 className="text-xl font-semibold mb-4 text-center">Want to Analyze Again?</h2>
+            <button 
+              onClick={handleReset} 
+              className="py-2 px-4 rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              Analyze Again
+            </button>
           </div>
         </div>
       </div>

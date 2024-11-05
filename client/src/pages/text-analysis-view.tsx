@@ -40,7 +40,7 @@ type AnalysisResult = {
       setResult(null)
   
       try {
-        const response = await fetch('http://127.0.0.1:5000/api/analyze', {
+        const response = await fetch('https://ai-app-backend-b4op.onrender.com/api/analyze', {
           method: 'POST',
           body: data instanceof FormData ? data : JSON.stringify(data),
           headers: data instanceof FormData ? {} : {
@@ -81,7 +81,7 @@ type AnalysisResult = {
         console.error('Error al cerrar sesión:', error);
       }
     };
-    
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 to-teal-600 flex flex-col p-4">
         <div className="container mx-auto px-4 py-8">

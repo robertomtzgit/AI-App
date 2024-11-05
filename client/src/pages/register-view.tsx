@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';;
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth } from '../firebaseConfig'; // Asegúrate de que el path esté correcto
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -43,15 +43,15 @@ export default function RegisterView() {
   const carouselItems = [
     {
       text: 'Track sentiment across social media in real-time.',
-      image: 'https://via.placeholder.com/150'
+      image: '/emoji-3.png'
     },
     {
       text: 'Trusted by leading brands around the world.',
-      image: 'https://via.placeholder.com/150'
+      image: '/emoji-1.jpg'
     },
     {
       text: 'Gain insights to improve customer satisfaction.',
-      image: 'https://via.placeholder.com/150'
+      image: '/emoji-2.png'
     }
   ];
 
@@ -77,7 +77,7 @@ export default function RegisterView() {
           <div className="flex flex-col items-center">
             <img
               className="h-16 w-16 mb-4"
-              src="https://via.placeholder.com/80"
+              src="/login.png"
               alt="Logo"
             />
             <h2 className="text-3xl font-extrabold text-gray-900 text-center">

@@ -1,5 +1,8 @@
-import React, { useState, useCallback, useRef } from 'react'
-import { Upload, Cloud, BarChart2, PieChart, FileText } from 'lucide-react'
+import React, { useState, useCallback, useRef } from 'react';
+import { Upload, Cloud, BarChart2, PieChart, FileText, useNavigate } from 'lucide-react'
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
+import { useAuth } from '../contexts/AuthContext'; // Importar useAuth
 
 type AnalysisResult = {
   sentimentSummary: {
@@ -14,25 +17,18 @@ type AnalysisResult = {
   sentimentCountsUrl: string
 }
 
-export default function TextAnalysisView(): JSX.Element {
-  const [text, setText] = useState<string>('')
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false)
+export default function TextAnalysisView() {
+  const [text, setText] = useState('')
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const formData = new FormData()
-      formData.append('file', file)
-      handleAnalyze(formData)
-    }
-  }
-
-  const handleAnalyze = useCallback(async (data: FormData | { text: string }) => {
-    setIsAnalyzing(true)
-    setResult(null)
-
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  
+  const handleAnalyze = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAnalyzing(true);
+    setResult(null);
+  
     try {
       const response = await fetch('http://127.0.0.1:5000/api/analyze', {
         method: 'POST',
@@ -65,7 +61,15 @@ export default function TextAnalysisView(): JSX.Element {
   const handleReset = () => {
     setText('')
     setResult(null)
-  }
+}
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/login'); // Redirigir al inicio de sesión después de cerrar sesión
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 to-teal-600 flex flex-col p-4">
@@ -184,5 +188,5 @@ export default function TextAnalysisView(): JSX.Element {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,16 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebaseConfig'; // Ajusta la ruta según donde esté tu archivo firebaseConfig.js
+import { useAuth } from '../contexts/AuthContext'; // Importar useAuth
 
 export default function LoginView() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(''); // Estado para manejar errores
   const [carouselIndex, setCarouselIndex] = useState(0);
+
+  const navigate = useNavigate();
+  const { currentUser } = useAuth(); // Obtener el usuario actual
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/analysis'); // Redirigir si ya está autenticado
+    }
+  }, [currentUser, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulating API call
+    setError('');
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log('Inicio de sesión exitoso');
+      navigate('/analysis'); // Redirige a TextAnalysisView
+    } catch (err) {
+      setError('Failed to sign in. Please check your credentials.');
+      console.error(err);
+    }
     setIsLoading(false);
   };
 
@@ -57,6 +79,7 @@ export default function LoginView() {
             <h2 className="text-3xl font-extrabold text-gray-900 text-center">
               Welcome Back!
             </h2>
+            {error && <div className="mb-4 text-red-600">{error}</div>}
             <p className="mt-2 text-center text-sm text-gray-600">
               Log in to continue with your sentiment analysis
             </p>
@@ -99,8 +122,8 @@ export default function LoginView() {
             <div>
               <button
                 type="submit"
-                className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={isLoading}
+                className={`w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isLoading || !email || !password}
               >
                 {isLoading ? (
                   <svg
@@ -148,3 +171,4 @@ export default function LoginView() {
     </div>
   );
 }
+

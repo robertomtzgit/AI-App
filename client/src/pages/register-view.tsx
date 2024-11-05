@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';;
+import { Link, useNavigate } from 'react-router-dom';
+import { auth } from '../firebaseConfig'; // Asegúrate de que el path esté correcto
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useAuth } from '../contexts/AuthContext'; // Importar useAuth
 
 export default function RegisterView() {
   const [email, setEmail] = useState('');
@@ -7,11 +10,33 @@ export default function RegisterView() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { currentUser } = useAuth(); // Obtener el usuario actual
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/analysis'); // Redirigir si ya está autenticado
+    }
+  }, [currentUser, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulating API call
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      alert("Cuenta creada exitosamente!");
+      navigate('/analysis'); // Redirigir después de registrarse
+    } catch (error) {
+      setError(error.message);
+    }
     setIsLoading(false);
   };
 
@@ -112,6 +137,7 @@ export default function RegisterView() {
                 />
               </div>
             </div>
+            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
             <div>
               <button
                 type="submit"
